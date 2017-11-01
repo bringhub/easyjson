@@ -27,6 +27,7 @@ var stubs = flag.Bool("stubs", false, "only generate stubs for marshaler/unmarsh
 var noformat = flag.Bool("noformat", false, "do not run 'gofmt -w' on output file")
 var specifiedName = flag.String("output_filename", "", "specify the filename of the output")
 var processPkg = flag.Bool("pkg", false, "process the whole package instead of just the given file")
+var additionalTags = flag.String("tags", "", "generate additional custom marshal/unmarshal functions using these tags (comma delimited list)")
 
 func generate(fname string) (err error) {
 	fInfo, err := os.Stat(fname)
@@ -72,7 +73,9 @@ func generate(fname string) (err error) {
 		OutName:         outName,
 		StubsOnly:       *stubs,
 		NoFormat:        *noformat,
+		AdditionalTags:  *additionalTags,
 	}
+	fmt.Println("tags: ", *additionalTags)
 
 	if err := g.Run(); err != nil {
 		return fmt.Errorf("Bootstrap failed: %v", err)

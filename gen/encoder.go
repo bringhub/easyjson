@@ -11,8 +11,9 @@ import (
 	"github.com/mailru/easyjson"
 )
 
+// TODO: changed this
 func (g *Generator) getEncoderName(t reflect.Type) string {
-	return g.functionName("encode", t)
+	return g.functionName(fmt.Sprintf("encode%v", strings.ToUpper(g.fieldNamer.GetTagName())), t)
 }
 
 var primitiveEncoders = map[reflect.Kind]string{
@@ -56,13 +57,14 @@ type fieldTags struct {
 	noOmitEmpty bool
 	asString    bool
 	required    bool
+	inline      bool
 }
 
 // parseFieldTags parses the json field tag into a structure.
-func parseFieldTags(f reflect.StructField) fieldTags {
+func (g *Generator) parseFieldTags(f reflect.StructField) fieldTags {
 	var ret fieldTags
 
-	for i, s := range strings.Split(f.Tag.Get("json"), ",") {
+	for i, s := range strings.Split(f.Tag.Get(g.fieldNamer.GetTagName()), ",") {
 		switch {
 		case i == 0 && s == "-":
 			ret.omit = true
@@ -76,6 +78,8 @@ func parseFieldTags(f reflect.StructField) fieldTags {
 			ret.asString = true
 		case s == "required":
 			ret.required = true
+		case s == "inline":
+			ret.inline = true
 		}
 	}
 
@@ -88,7 +92,7 @@ func (g *Generator) genTypeEncoder(t reflect.Type, in string, tags fieldTags, in
 
 	marshalerIface := reflect.TypeOf((*easyjson.Marshaler)(nil)).Elem()
 	if reflect.PtrTo(t).Implements(marshalerIface) {
-		fmt.Fprintln(g.out, ws+"("+in+").MarshalEasyJSON(out)")
+		fmt.Fprintln(g.out, ws+"("+in+").MarshalEasyJSON(out, \""+g.fieldNamer.GetTagName()+"\")")
 		return nil
 	}
 
@@ -218,7 +222,7 @@ func (g *Generator) genTypeEncoderNoCheck(t reflect.Type, in string, tags fieldT
 			return fmt.Errorf("interface type %v not supported: only interface{} is allowed", t)
 		}
 		fmt.Fprintln(g.out, ws+"if m, ok := "+in+".(easyjson.Marshaler); ok {")
-		fmt.Fprintln(g.out, ws+"  m.MarshalEasyJSON(out)")
+		fmt.Fprintln(g.out, ws+"  m.MarshalEasyJSON(out, \""+g.fieldNamer.GetTagName()+"\")")
 		fmt.Fprintln(g.out, ws+"} else if m, ok := "+in+".(json.Marshaler); ok {")
 		fmt.Fprintln(g.out, ws+"  out.Raw(m.MarshalJSON())")
 		fmt.Fprintln(g.out, ws+"} else {")
@@ -260,7 +264,7 @@ func (g *Generator) notEmptyCheck(t reflect.Type, v string) string {
 
 func (g *Generator) genStructFieldEncoder(t reflect.Type, f reflect.StructField) error {
 	jsonName := g.fieldNamer.GetJSONFieldName(t, f)
-	tags := parseFieldTags(f)
+	tags := g.parseFieldTags(f)
 
 	if tags.omit {
 		return nil
@@ -271,7 +275,7 @@ func (g *Generator) genStructFieldEncoder(t reflect.Type, f reflect.StructField)
 		fmt.Fprintf(g.out, "  out.RawString(%q)\n", strconv.Quote(jsonName)+":")
 		return g.genTypeEncoder(f.Type, "in."+f.Name, tags, 1)
 	}
-
+	// if it is a struct and inline tagged, just call genStructFieldEncoder for each of it's types?
 	fmt.Fprintln(g.out, "  if", g.notEmptyCheck(f.Type, "in."+f.Name), "{")
 	fmt.Fprintln(g.out, "    if !first { out.RawByte(',') }")
 	fmt.Fprintln(g.out, "    first = false")
@@ -348,6 +352,7 @@ func (g *Generator) genStructMarshaler(t reflect.Type) error {
 		return fmt.Errorf("cannot generate encoder/decoder for %v, not a struct/slice/array/map type", t)
 	}
 
+	origFieldNamer := g.fieldNamer
 	fname := g.getEncoderName(t)
 	typ := g.getType(t)
 
@@ -361,8 +366,22 @@ func (g *Generator) genStructMarshaler(t reflect.Type) error {
 	}
 
 	fmt.Fprintln(g.out, "// MarshalEasyJSON supports easyjson.Marshaler interface")
-	fmt.Fprintln(g.out, "func (v "+typ+") MarshalEasyJSON(w *jwriter.Writer) {")
-	fmt.Fprintln(g.out, "  "+fname+"(w, v)")
+	fmt.Fprintln(g.out, "func (v "+typ+") MarshalEasyJSON(w *jwriter.Writer, usingTagName string) {")
+
+	fmt.Fprintln(g.out, "	switch usingTagName {")
+	for _, at := range g.additionalTags {
+		g.SetFieldNamer(DefaultFieldNamer{tagName: at})
+		atfname := g.getEncoderName(t)
+		fmt.Fprintln(g.out, "	case \""+at+"\":")
+		fmt.Fprintln(g.out, "		"+atfname+"(w, v)")
+		fmt.Fprintln(g.out, "		break")
+	}
+	g.SetFieldNamer(origFieldNamer)
+	fmt.Fprintln(g.out, "	default:")
+	fmt.Fprintln(g.out, "		"+fname+"(w, v)")
+	fmt.Fprintln(g.out, "		break")
+	fmt.Fprintln(g.out, "	}")
+
 	fmt.Fprintln(g.out, "}")
 
 	return nil

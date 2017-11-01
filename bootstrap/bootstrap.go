@@ -33,6 +33,8 @@ type Generator struct {
 	StubsOnly  bool
 	LeaveTemps bool
 	NoFormat   bool
+
+	AdditionalTags string
 }
 
 // writeStub outputs an initial stubs for marshalers/unmarshalers so that the package
@@ -69,8 +71,8 @@ func (g *Generator) writeStub() error {
 			fmt.Fprintln(f, "func (*", t, ") UnmarshalJSON([]byte) error { return nil }")
 		}
 
-		fmt.Fprintln(f, "func (", t, ") MarshalEasyJSON(w *jwriter.Writer) {}")
-		fmt.Fprintln(f, "func (*", t, ") UnmarshalEasyJSON(l *jlexer.Lexer) {}")
+		fmt.Fprintln(f, "func (", t, ") MarshalEasyJSON(w *jwriter.Writer, usingTagName string) {}")
+		fmt.Fprintln(f, "func (*", t, ") UnmarshalEasyJSON(l *jlexer.Lexer, usingTagName string) {}")
 		fmt.Fprintln(f)
 		fmt.Fprintln(f, "type EasyJSON_exporter_"+t+" *"+t)
 	}
@@ -102,7 +104,7 @@ func (g *Generator) writeMain() (path string, err error) {
 	}
 	fmt.Fprintln(f, ")")
 	fmt.Fprintln(f)
-	fmt.Fprintln(f, "func main() {")
+	fmt.Fprintln(f, "func main() {") //TODO: changed this
 	fmt.Fprintf(f, "  g := gen.NewGenerator(%q)\n", filepath.Base(g.OutName))
 	fmt.Fprintf(f, "  g.SetPkg(%q, %q)\n", g.PkgName, g.PkgPath)
 	if g.BuildTags != "" {
@@ -119,6 +121,9 @@ func (g *Generator) writeMain() (path string, err error) {
 	}
 	if g.NoStdMarshalers {
 		fmt.Fprintln(f, "  g.NoStdMarshalers()")
+	}
+	if len(g.AdditionalTags) > 0 {
+		fmt.Fprintf(f, "  g.SetAdditionalTags(%q)\n", g.AdditionalTags)
 	}
 
 	sort.Strings(g.Types)

@@ -19,6 +19,7 @@ const pkgEasyJSON = "github.com/mailru/easyjson"
 
 // FieldNamer defines a policy for generating names for struct fields.
 type FieldNamer interface {
+	GetTagName() string
 	GetJSONFieldName(t reflect.Type, f reflect.StructField) string
 }
 
@@ -52,6 +53,8 @@ type Generator struct {
 	// function name to relevant type maps to track names of de-/encoders in
 	// case of a name clash or unnamed structs
 	functionNames map[string]reflect.Type
+
+	additionalTags []string
 }
 
 // NewGenerator initializes and returns a Generator.
@@ -63,7 +66,7 @@ func NewGenerator(filename string) *Generator {
 			pkgEasyJSON:     "easyjson",
 			"encoding/json": "json",
 		},
-		fieldNamer:    DefaultFieldNamer{},
+		fieldNamer:    DefaultFieldNamer{tagName: "json"},
 		marshalers:    make(map[reflect.Type]bool),
 		typesSeen:     make(map[reflect.Type]bool),
 		functionNames: make(map[string]reflect.Type),
@@ -87,6 +90,12 @@ func (g *Generator) SetPkg(name, path string) {
 // SetBuildTags sets build tags for the output file.
 func (g *Generator) SetBuildTags(tags string) {
 	g.buildTags = tags
+}
+
+func (g *Generator) SetAdditionalTags(addlTags string) {
+	for _, at := range strings.Split(addlTags, ",") {
+		g.additionalTags = append(g.additionalTags, strings.TrimSpace(at))
+	}
 }
 
 // SetFieldNamer sets field naming strategy.
@@ -179,6 +188,7 @@ func (g *Generator) printHeader() {
 // Run runs the generator and outputs generated code to out.
 func (g *Generator) Run(out io.Writer) error {
 	g.out = &bytes.Buffer{}
+	origFieldNamer := g.fieldNamer
 
 	for len(g.typesUnseen) > 0 {
 		t := g.typesUnseen[len(g.typesUnseen)-1]
@@ -191,6 +201,17 @@ func (g *Generator) Run(out io.Writer) error {
 		if err := g.genEncoder(t); err != nil {
 			return err
 		}
+
+		for _, at := range g.additionalTags {
+			g.SetFieldNamer(DefaultFieldNamer{tagName: at})
+			if err := g.genDecoder(t); err != nil {
+				return err
+			}
+			if err := g.genEncoder(t); err != nil {
+				return err
+			}
+		}
+		g.SetFieldNamer(origFieldNamer)
 
 		if !g.marshalers[t] {
 			continue
@@ -372,19 +393,25 @@ func (g *Generator) functionName(prefix string, t reflect.Type) string {
 }
 
 // DefaultFieldsNamer implements trivial naming policy equivalent to encoding/json.
-type DefaultFieldNamer struct{}
+type DefaultFieldNamer struct{ tagName string }
 
-func (DefaultFieldNamer) GetJSONFieldName(t reflect.Type, f reflect.StructField) string {
-	jsonName := strings.Split(f.Tag.Get("json"), ",")[0]
+func (dfn DefaultFieldNamer) GetTagName() string {
+	tagName := "json"
+	if len(dfn.tagName) > 0 {
+		tagName = dfn.tagName
+	}
+	return tagName
+}
+func (dfn DefaultFieldNamer) GetJSONFieldName(t reflect.Type, f reflect.StructField) string {
+	jsonName := strings.Split(f.Tag.Get(dfn.GetTagName()), ",")[0]
 	if jsonName != "" {
 		return jsonName
-	} else {
-		return f.Name
 	}
+	return f.Name
 }
 
 // LowerCamelCaseFieldNamer
-type LowerCamelCaseFieldNamer struct{}
+type LowerCamelCaseFieldNamer struct{ tagName string }
 
 func isLower(b byte) bool {
 	return b <= 122 && b >= 97
@@ -438,18 +465,23 @@ func lowerFirst(s string) string {
 
 	return str
 }
-
-func (LowerCamelCaseFieldNamer) GetJSONFieldName(t reflect.Type, f reflect.StructField) string {
-	jsonName := strings.Split(f.Tag.Get("json"), ",")[0]
+func (lccfn LowerCamelCaseFieldNamer) GetTagName() string {
+	tagName := "json"
+	if len(lccfn.tagName) > 0 {
+		tagName = lccfn.tagName
+	}
+	return tagName
+}
+func (lccfn LowerCamelCaseFieldNamer) GetJSONFieldName(t reflect.Type, f reflect.StructField) string {
+	jsonName := strings.Split(f.Tag.Get(lccfn.GetTagName()), ",")[0]
 	if jsonName != "" {
 		return jsonName
-	} else {
-		return lowerFirst(f.Name)
 	}
+	return lowerFirst(f.Name)
 }
 
 // SnakeCaseFieldNamer implements CamelCase to snake_case conversion for fields names.
-type SnakeCaseFieldNamer struct{}
+type SnakeCaseFieldNamer struct{ tagName string }
 
 func camelToSnake(name string) string {
 	var ret bytes.Buffer
@@ -496,8 +528,16 @@ func camelToSnake(name string) string {
 	return string(ret.Bytes())
 }
 
-func (SnakeCaseFieldNamer) GetJSONFieldName(t reflect.Type, f reflect.StructField) string {
-	jsonName := strings.Split(f.Tag.Get("json"), ",")[0]
+func (scfn SnakeCaseFieldNamer) GetTagName() string {
+	tagName := "json"
+	if len(scfn.tagName) > 0 {
+		tagName = scfn.tagName
+	}
+	return tagName
+}
+
+func (scfn SnakeCaseFieldNamer) GetJSONFieldName(t reflect.Type, f reflect.StructField) string {
+	jsonName := strings.Split(f.Tag.Get(scfn.GetTagName()), ",")[0]
 	if jsonName != "" {
 		return jsonName
 	}

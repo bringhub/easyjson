@@ -14,8 +14,9 @@ import (
 // Target this byte size for initial slice allocation to reduce garbage collection.
 const minSliceBytes = 64
 
+// TODO: changed this
 func (g *Generator) getDecoderName(t reflect.Type) string {
-	return g.functionName("decode", t)
+	return g.functionName(fmt.Sprintf("decode%v", strings.ToUpper(g.fieldNamer.GetTagName())), t)
 }
 
 var primitiveDecoders = map[reflect.Kind]string{
@@ -51,7 +52,7 @@ var primitiveStringDecoders = map[reflect.Kind]string{
 }
 
 var customDecoders = map[string]string{
-	"json.Number":    "in.JsonNumber()",
+	"json.Number": "in.JsonNumber()",
 }
 
 // genTypeDecoder generates decoding code for the type t, but uses unmarshaler interface if implemented by t.
@@ -60,7 +61,7 @@ func (g *Generator) genTypeDecoder(t reflect.Type, out string, tags fieldTags, i
 
 	unmarshalerIface := reflect.TypeOf((*easyjson.Unmarshaler)(nil)).Elem()
 	if reflect.PtrTo(t).Implements(unmarshalerIface) {
-		fmt.Fprintln(g.out, ws+"("+out+").UnmarshalEasyJSON(in)")
+		fmt.Fprintln(g.out, ws+"("+out+").UnmarshalEasyJSON(in, \""+g.fieldNamer.GetTagName()+"\")")
 		return nil
 	}
 
@@ -88,7 +89,7 @@ func (g *Generator) genTypeDecoder(t reflect.Type, out string, tags fieldTags, i
 func (g *Generator) genTypeDecoderNoCheck(t reflect.Type, out string, tags fieldTags, indent int) error {
 	ws := strings.Repeat("  ", indent)
 	// Check whether type is primitive, needs to be done after interface check.
-	if dec := customDecoders[t.String()]; dec != ""  {
+	if dec := customDecoders[t.String()]; dec != "" {
 		fmt.Fprintln(g.out, ws+out+" = "+dec)
 		return nil
 	} else if dec := primitiveStringDecoders[t.Kind()]; dec != "" && tags.asString {
@@ -244,7 +245,7 @@ func (g *Generator) genTypeDecoderNoCheck(t reflect.Type, out string, tags field
 			return fmt.Errorf("interface type %v not supported: only interface{} is allowed", t)
 		}
 		fmt.Fprintln(g.out, ws+"if m, ok := "+out+".(easyjson.Unmarshaler); ok {")
-		fmt.Fprintln(g.out, ws+"m.UnmarshalEasyJSON(in)")
+		fmt.Fprintln(g.out, ws+"m.UnmarshalEasyJSON(in, \""+g.fieldNamer.GetTagName()+"\")")
 		fmt.Fprintln(g.out, ws+"} else if m, ok := "+out+".(json.Unmarshaler); ok {")
 		fmt.Fprintln(g.out, ws+"_ = m.UnmarshalJSON(in.Raw())")
 		fmt.Fprintln(g.out, ws+"} else {")
@@ -259,7 +260,7 @@ func (g *Generator) genTypeDecoderNoCheck(t reflect.Type, out string, tags field
 
 func (g *Generator) genStructFieldDecoder(t reflect.Type, f reflect.StructField) error {
 	jsonName := g.fieldNamer.GetJSONFieldName(t, f)
-	tags := parseFieldTags(f)
+	tags := g.parseFieldTags(f)
 
 	if tags.omit {
 		return nil
@@ -278,7 +279,7 @@ func (g *Generator) genStructFieldDecoder(t reflect.Type, f reflect.StructField)
 }
 
 func (g *Generator) genRequiredFieldSet(t reflect.Type, f reflect.StructField) {
-	tags := parseFieldTags(f)
+	tags := g.parseFieldTags(f)
 
 	if !tags.required {
 		return
@@ -289,7 +290,7 @@ func (g *Generator) genRequiredFieldSet(t reflect.Type, f reflect.StructField) {
 
 func (g *Generator) genRequiredFieldCheck(t reflect.Type, f reflect.StructField) {
 	jsonName := g.fieldNamer.GetJSONFieldName(t, f)
-	tags := parseFieldTags(f)
+	tags := g.parseFieldTags(f)
 
 	if !tags.required {
 		return
@@ -393,7 +394,7 @@ func (g *Generator) genStructDecoder(t reflect.Type) error {
 	if t.Kind() != reflect.Struct {
 		return fmt.Errorf("cannot generate encoder/decoder for %v, not a struct type", t)
 	}
-
+	// TODO: here is probably where I would want to do the adding of other tags
 	fname := g.getDecoderName(t)
 	typ := g.getType(t)
 
@@ -468,6 +469,7 @@ func (g *Generator) genStructUnmarshaler(t reflect.Type) error {
 		return fmt.Errorf("cannot generate encoder/decoder for %v, not a struct/slice/array/map type", t)
 	}
 
+	origFieldNamer := g.fieldNamer
 	fname := g.getDecoderName(t)
 	typ := g.getType(t)
 
@@ -481,8 +483,23 @@ func (g *Generator) genStructUnmarshaler(t reflect.Type) error {
 	}
 
 	fmt.Fprintln(g.out, "// UnmarshalEasyJSON supports easyjson.Unmarshaler interface")
-	fmt.Fprintln(g.out, "func (v *"+typ+") UnmarshalEasyJSON(l *jlexer.Lexer) {")
-	fmt.Fprintln(g.out, "  "+fname+"(l, v)")
+	fmt.Fprintln(g.out, "func (v *"+typ+") UnmarshalEasyJSON(l *jlexer.Lexer, usingTagName string) {")
+
+	fmt.Fprintln(g.out, "	switch usingTagName {")
+	for _, at := range g.additionalTags {
+		g.SetFieldNamer(DefaultFieldNamer{tagName: at})
+		atfname := g.getDecoderName(t)
+		fmt.Fprintln(g.out, "	case \""+at+"\":")
+		fmt.Fprintln(g.out, "		"+atfname+"(l, v)")
+		fmt.Fprintln(g.out, "		break")
+	}
+	g.SetFieldNamer(origFieldNamer)
+	fmt.Fprintln(g.out, "	default:")
+	fmt.Fprintln(g.out, "		"+fname+"(l, v)")
+	fmt.Fprintln(g.out, "		break")
+	fmt.Fprintln(g.out, "	}")
+
+	// fmt.Fprintln(g.out, "  "+fname+"(l, v)")
 	fmt.Fprintln(g.out, "}")
 
 	return nil

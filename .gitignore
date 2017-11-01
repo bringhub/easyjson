@@ -2,3 +2,5 @@
 *_easyjson.go
 *.iml
 .idea
+app.o
+**/app.o
