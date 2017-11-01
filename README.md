@@ -1,4 +1,4 @@
-# easyjson [![Build Status](https://travis-ci.org/mailru/easyjson.svg?branch=master)](https://travis-ci.org/mailru/easyjson) [![Go Report Card](https://goreportcard.com/badge/github.com/mailru/easyjson)](https://goreportcard.com/report/github.com/mailru/easyjson)
+# easyjson [![Build Status](https://travis-ci.org/mailru/easyjson.svg?branch=master)](https://travis-ci.org/mailru/easyjson) [![Go Report Card](https://goreportcard.com/badge/github.com/bringhub/easyjson)](https://goreportcard.com/report/github.com/bringhub/easyjson)
 
 Package easyjson provides a fast and easy way to marshal/unmarshal Go structs
 to/from JSON without the use of reflection. In performance tests, easyjson
@@ -14,7 +14,7 @@ enabling `omitempty` behavior by default.
 ## Usage
 ```sh
 # install
-go get -u github.com/mailru/easyjson/...
+go get -u github.com/bringhub/easyjson/...
 
 # run
 easyjson -all <file>.go
@@ -53,6 +53,8 @@ Usage of easyjson:
         use lowerCamelCase instead of CamelCase by default
   -stubs
     	only generate stubs for marshaler/unmarshaler funcs
+  -tags
+      generate functions for marshaling and unmarshaling based on custom tags. Comma delimited list.
 ```
 
 Using `-all` will generate marshalers/unmarshalers for all Go structs in the
@@ -94,7 +96,7 @@ Additionally, easyjson exposes utility funcs that use the `MarshalEasyJSON` and
 `UnmarshalEasyJSON` for marshaling/unmarshaling to and from standard readers
 and writers. For example, easyjson provides `easyjson.MarshalToHTTPResponseWriter`
 which marshals to the standard `http.ResponseWriter`. Please see the [GoDoc
-listing](https://godoc.org/github.com/mailru/easyjson) for the full listing of
+listing](https://godoc.org/github.com/bringhub/easyjson) for the full listing of
 utility funcs that are available.
 
 ## Controlling easyjson Marshaling and Unmarshaling Behavior
@@ -128,7 +130,7 @@ allocation and to allow larger reusable buffers.
 easyjson's custom allocation buffer pool is defined in the `easyjson/buffer`
 package, and the default behavior pool behavior can be modified (if necessary)
 through a call to `buffer.Init()` prior to any marshaling or unmarshaling.
-Please see the [GoDoc listing](https://godoc.org/github.com/mailru/easyjson/buffer)
+Please see the [GoDoc listing](https://godoc.org/github.com/bringhub/easyjson/buffer)
 for more information.
 
 ## Issues, Notes, and Limitations

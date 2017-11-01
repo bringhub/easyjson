@@ -6,8 +6,8 @@ import (
 
 	"encoding/json"
 
-	"github.com/mailru/easyjson"
-	"github.com/mailru/easyjson/jwriter"
+	"github.com/bringhub/easyjson"
+	"github.com/bringhub/easyjson/jwriter"
 )
 
 type testType interface {
