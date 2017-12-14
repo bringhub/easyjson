@@ -27,7 +27,7 @@ var stubs = flag.Bool("stubs", false, "only generate stubs for marshaler/unmarsh
 var noformat = flag.Bool("noformat", false, "do not run 'gofmt -w' on output file")
 var specifiedName = flag.String("output_filename", "", "specify the filename of the output")
 var processPkg = flag.Bool("pkg", false, "process the whole package instead of just the given file")
-var additionalTags = flag.String("tags", "", "generate additional custom marshal/unmarshal functions using these tags (comma delimited list)")
+var additionalTags = flag.String("tags", "", "generate additional custom marshal/unmarshal functions using these tags (comma delimited list). If you wish to specify a backup tag to use in the case where the tag is missing use a colon. Eg: -tags=conversion:json,elastic:json")
 
 func generate(fname string) (err error) {
 	fInfo, err := os.Stat(fname)
