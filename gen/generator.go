@@ -20,6 +20,7 @@ const pkgEasyJSON = "github.com/bringhub/easyjson"
 // FieldNamer defines a policy for generating names for struct fields.
 type FieldNamer interface {
 	GetTagName() string
+	GetTagValue(f reflect.StructField) string
 	GetJSONFieldName(t reflect.Type, f reflect.StructField) string
 }
 
@@ -416,16 +417,19 @@ func (dfn DefaultFieldNamer) GetTagName() string {
 	}
 	return tagName
 }
-func (dfn DefaultFieldNamer) GetJSONFieldName(t reflect.Type, f reflect.StructField) string {
-	jsonName := strings.Split(f.Tag.Get(dfn.GetTagName()), ",")[0]
-	if jsonName != "" {
-		return jsonName
+func (dfn DefaultFieldNamer) GetTagValue(f reflect.StructField) string {
+	// try tagname
+	t := strings.TrimSpace(f.Tag.Get(dfn.GetTagName()))
+	if len(t) < 1 { //otherwise try backup
+		t = strings.TrimSpace(f.Tag.Get(dfn.backupTag))
 	}
-	if len(dfn.backupTag) > 0 {
-		jsonName = strings.Split(f.Tag.Get(dfn.backupTag), ",")[0]
-		if len(jsonName) > 0 {
-			return jsonName
-		}
+	return t
+}
+func (dfn DefaultFieldNamer) GetJSONFieldName(t reflect.Type, f reflect.StructField) string {
+	tagVal := dfn.GetTagValue(f)
+	jsonName := strings.Split(tagVal, ",")[0]
+	if len(tagVal) > 0 {
+		return jsonName
 	}
 	return f.Name
 }
@@ -495,16 +499,19 @@ func (lccfn LowerCamelCaseFieldNamer) GetTagName() string {
 	}
 	return tagName
 }
-func (lccfn LowerCamelCaseFieldNamer) GetJSONFieldName(t reflect.Type, f reflect.StructField) string {
-	jsonName := strings.Split(f.Tag.Get(lccfn.GetTagName()), ",")[0]
-	if jsonName != "" {
-		return jsonName
+func (lccfn LowerCamelCaseFieldNamer) GetTagValue(f reflect.StructField) string {
+	// try tagname
+	t := strings.TrimSpace(f.Tag.Get(lccfn.GetTagName()))
+	if len(t) < 1 { //otherwise try backup
+		t = strings.TrimSpace(f.Tag.Get(lccfn.backupTag))
 	}
-	if len(lccfn.backupTag) > 0 {
-		jsonName = strings.Split(f.Tag.Get(lccfn.backupTag), ",")[0]
-		if len(jsonName) > 0 {
-			return jsonName
-		}
+	return t
+}
+func (lccfn LowerCamelCaseFieldNamer) GetJSONFieldName(t reflect.Type, f reflect.StructField) string {
+	tagVal := lccfn.GetTagValue(f)
+	jsonName := strings.Split(tagVal, ",")[0]
+	if len(tagVal) > 0 {
+		return jsonName
 	}
 	return lowerFirst(f.Name)
 }
@@ -567,17 +574,19 @@ func (scfn SnakeCaseFieldNamer) GetTagName() string {
 	}
 	return tagName
 }
-
-func (scfn SnakeCaseFieldNamer) GetJSONFieldName(t reflect.Type, f reflect.StructField) string {
-	jsonName := strings.Split(f.Tag.Get(scfn.GetTagName()), ",")[0]
-	if jsonName != "" {
-		return jsonName
+func (scfn SnakeCaseFieldNamer) GetTagValue(f reflect.StructField) string {
+	// try tagname
+	t := strings.TrimSpace(f.Tag.Get(scfn.GetTagName()))
+	if len(t) < 1 { //otherwise try backup
+		t = strings.TrimSpace(f.Tag.Get(scfn.backupTag))
 	}
-	if len(scfn.backupTag) > 0 {
-		jsonName = strings.Split(f.Tag.Get(scfn.backupTag), ",")[0]
-		if len(jsonName) > 0 {
-			return jsonName
-		}
+	return t
+}
+func (scfn SnakeCaseFieldNamer) GetJSONFieldName(t reflect.Type, f reflect.StructField) string {
+	tagVal := scfn.GetTagValue(f)
+	jsonName := strings.Split(tagVal, ",")[0]
+	if len(tagVal) > 0 {
+		return jsonName
 	}
 	return camelToSnake(f.Name)
 }

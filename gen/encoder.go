@@ -63,8 +63,8 @@ type fieldTags struct {
 // parseFieldTags parses the json field tag into a structure.
 func (g *Generator) parseFieldTags(f reflect.StructField) fieldTags {
 	var ret fieldTags
-	/*f.Tag.Get(g.fieldNamer.GetTagName())*/
-	for i, s := range strings.Split(g.fieldNamer.GetJSONFieldName(f.Type, f), ",") {
+
+	for i, s := range strings.Split(g.fieldNamer.GetTagValue(f), ",") {
 		switch {
 		case i == 0 && s == "-":
 			ret.omit = true
