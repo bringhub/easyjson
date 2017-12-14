@@ -23,6 +23,11 @@ type FieldNamer interface {
 	GetJSONFieldName(t reflect.Type, f reflect.StructField) string
 }
 
+type additionalTag struct {
+	Tag       string
+	BackupTag string
+}
+
 // Generator generates the requested marshaler/unmarshalers.
 type Generator struct {
 	out *bytes.Buffer
@@ -54,7 +59,7 @@ type Generator struct {
 	// case of a name clash or unnamed structs
 	functionNames map[string]reflect.Type
 
-	additionalTags []string
+	additionalTags []additionalTag
 }
 
 // NewGenerator initializes and returns a Generator.
@@ -94,7 +99,13 @@ func (g *Generator) SetBuildTags(tags string) {
 
 func (g *Generator) SetAdditionalTags(addlTags string) {
 	for _, at := range strings.Split(addlTags, ",") {
-		g.additionalTags = append(g.additionalTags, strings.TrimSpace(at))
+		defSplits := strings.Split(at, ":")
+		tag := strings.TrimSpace(defSplits[0])
+		def := ""
+		if len(defSplits) > 1 {
+			def = strings.TrimSpace(defSplits[1])
+		}
+		g.additionalTags = append(g.additionalTags, additionalTag{Tag: tag, BackupTag: def})
 	}
 }
 
@@ -203,7 +214,7 @@ func (g *Generator) Run(out io.Writer) error {
 		}
 
 		for _, at := range g.additionalTags {
-			g.SetFieldNamer(DefaultFieldNamer{tagName: at})
+			g.SetFieldNamer(DefaultFieldNamer{tagName: at.Tag, backupTag: at.BackupTag})
 			if err := g.genDecoder(t); err != nil {
 				return err
 			}
@@ -393,7 +404,10 @@ func (g *Generator) functionName(prefix string, t reflect.Type) string {
 }
 
 // DefaultFieldsNamer implements trivial naming policy equivalent to encoding/json.
-type DefaultFieldNamer struct{ tagName string }
+type DefaultFieldNamer struct {
+	tagName   string
+	backupTag string
+}
 
 func (dfn DefaultFieldNamer) GetTagName() string {
 	tagName := "json"
@@ -407,11 +421,20 @@ func (dfn DefaultFieldNamer) GetJSONFieldName(t reflect.Type, f reflect.StructFi
 	if jsonName != "" {
 		return jsonName
 	}
+	if len(dfn.backupTag) > 0 {
+		jsonName = strings.Split(f.Tag.Get(dfn.backupTag), ",")[0]
+		if len(jsonName) > 0 {
+			return jsonName
+		}
+	}
 	return f.Name
 }
 
 // LowerCamelCaseFieldNamer
-type LowerCamelCaseFieldNamer struct{ tagName string }
+type LowerCamelCaseFieldNamer struct {
+	tagName   string
+	backupTag string
+}
 
 func isLower(b byte) bool {
 	return b <= 122 && b >= 97
@@ -477,11 +500,20 @@ func (lccfn LowerCamelCaseFieldNamer) GetJSONFieldName(t reflect.Type, f reflect
 	if jsonName != "" {
 		return jsonName
 	}
+	if len(lccfn.backupTag) > 0 {
+		jsonName = strings.Split(f.Tag.Get(lccfn.backupTag), ",")[0]
+		if len(jsonName) > 0 {
+			return jsonName
+		}
+	}
 	return lowerFirst(f.Name)
 }
 
 // SnakeCaseFieldNamer implements CamelCase to snake_case conversion for fields names.
-type SnakeCaseFieldNamer struct{ tagName string }
+type SnakeCaseFieldNamer struct {
+	tagName   string
+	backupTag string
+}
 
 func camelToSnake(name string) string {
 	var ret bytes.Buffer
@@ -541,7 +573,12 @@ func (scfn SnakeCaseFieldNamer) GetJSONFieldName(t reflect.Type, f reflect.Struc
 	if jsonName != "" {
 		return jsonName
 	}
-
+	if len(scfn.backupTag) > 0 {
+		jsonName = strings.Split(f.Tag.Get(scfn.backupTag), ",")[0]
+		if len(jsonName) > 0 {
+			return jsonName
+		}
+	}
 	return camelToSnake(f.Name)
 }
 

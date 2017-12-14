@@ -260,6 +260,7 @@ func (g *Generator) genTypeDecoderNoCheck(t reflect.Type, out string, tags field
 
 func (g *Generator) genStructFieldDecoder(t reflect.Type, f reflect.StructField) error {
 	jsonName := g.fieldNamer.GetJSONFieldName(t, f)
+	// fmt.Fprintf(os.Stderr, "field name %v %v\nfield namer: %v\n", t, jsonName, g.fieldNamer)
 	tags := g.parseFieldTags(f)
 
 	if tags.omit {
@@ -487,9 +488,9 @@ func (g *Generator) genStructUnmarshaler(t reflect.Type) error {
 
 	fmt.Fprintln(g.out, "	switch usingTagName {")
 	for _, at := range g.additionalTags {
-		g.SetFieldNamer(DefaultFieldNamer{tagName: at})
+		g.SetFieldNamer(DefaultFieldNamer{tagName: at.Tag, backupTag: at.BackupTag})
 		atfname := g.getDecoderName(t)
-		fmt.Fprintln(g.out, "	case \""+at+"\":")
+		fmt.Fprintln(g.out, "	case \""+at.Tag+"\":")
 		fmt.Fprintln(g.out, "		"+atfname+"(l, v)")
 		fmt.Fprintln(g.out, "		break")
 	}

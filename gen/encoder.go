@@ -370,9 +370,9 @@ func (g *Generator) genStructMarshaler(t reflect.Type) error {
 
 	fmt.Fprintln(g.out, "	switch usingTagName {")
 	for _, at := range g.additionalTags {
-		g.SetFieldNamer(DefaultFieldNamer{tagName: at})
+		g.SetFieldNamer(DefaultFieldNamer{tagName: at.Tag, backupTag: at.BackupTag})
 		atfname := g.getEncoderName(t)
-		fmt.Fprintln(g.out, "	case \""+at+"\":")
+		fmt.Fprintln(g.out, "	case \""+at.Tag+"\":")
 		fmt.Fprintln(g.out, "		"+atfname+"(w, v)")
 		fmt.Fprintln(g.out, "		break")
 	}

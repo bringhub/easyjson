@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strings"
 )
 
 const genPackage = "github.com/bringhub/easyjson/gen"
@@ -72,10 +73,11 @@ func (g *Generator) writeStub() error {
 		}
 
 		fmt.Fprintln(f, "func (", t, ") MarshalEasyJSON(w *jwriter.Writer, usingTagName string) {}")
-		fmt.Fprintln(f, "func (*", t, ") UnmarshalEasyJSON(l *jlexer.Lexer, usingTagName string) {}")
+		fmt.Fprintln(f, "func (*", strings.TrimSpace(t), ") UnmarshalEasyJSON(l *jlexer.Lexer, usingTagName string) {}")
 		fmt.Fprintln(f)
 		fmt.Fprintln(f, "type EasyJSON_exporter_"+t+" *"+t)
 	}
+	// return errors.New("test")
 	return nil
 }
 
