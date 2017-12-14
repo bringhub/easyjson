@@ -319,15 +319,22 @@ func mergeStructFields(fields1, fields2 []reflect.StructField) (fields []reflect
 	return
 }
 
-func getStructFields(t reflect.Type) ([]reflect.StructField, error) {
+func (g *Generator) getStructFields(t reflect.Type) ([]reflect.StructField, error) {
 	if t.Kind() != reflect.Struct {
 		return nil, fmt.Errorf("got %v; expected a struct", t)
 	}
-
+	/*
+	   Ignore if it is embeded/Anonymous, only go off of ,inline tag flag
+	   to see if the user intends for the struct to be treated as inline
+	   during serialization.
+	*/
 	var efields []reflect.StructField
 	for i := 0; i < t.NumField(); i++ {
 		f := t.Field(i)
-		if !f.Anonymous {
+
+		fieldTags := g.parseFieldTags(f)
+
+		if !fieldTags.inline {
 			continue
 		}
 
@@ -336,7 +343,7 @@ func getStructFields(t reflect.Type) ([]reflect.StructField, error) {
 			t1 = t1.Elem()
 		}
 
-		fs, err := getStructFields(t1)
+		fs, err := g.getStructFields(t1)
 		if err != nil {
 			return nil, fmt.Errorf("error processing embedded field: %v", err)
 		}
@@ -346,7 +353,10 @@ func getStructFields(t reflect.Type) ([]reflect.StructField, error) {
 	var fields []reflect.StructField
 	for i := 0; i < t.NumField(); i++ {
 		f := t.Field(i)
-		if f.Anonymous {
+
+		fieldTags := g.parseFieldTags(f)
+
+		if fieldTags.inline {
 			continue
 		}
 
@@ -395,7 +405,6 @@ func (g *Generator) genStructDecoder(t reflect.Type) error {
 	if t.Kind() != reflect.Struct {
 		return fmt.Errorf("cannot generate encoder/decoder for %v, not a struct type", t)
 	}
-	// TODO: here is probably where I would want to do the adding of other tags
 	fname := g.getDecoderName(t)
 	typ := g.getType(t)
 
@@ -418,7 +427,7 @@ func (g *Generator) genStructDecoder(t reflect.Type) error {
 		fmt.Fprintln(g.out, "  out."+f.Name+" = new("+g.getType(f.Type.Elem())+")")
 	}
 
-	fs, err := getStructFields(t)
+	fs, err := g.getStructFields(t)
 	if err != nil {
 		return fmt.Errorf("cannot generate decoder for %v: %v", t, err)
 	}

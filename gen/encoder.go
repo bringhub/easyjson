@@ -63,8 +63,8 @@ type fieldTags struct {
 // parseFieldTags parses the json field tag into a structure.
 func (g *Generator) parseFieldTags(f reflect.StructField) fieldTags {
 	var ret fieldTags
-
-	for i, s := range strings.Split(f.Tag.Get(g.fieldNamer.GetTagName()), ",") {
+	/*f.Tag.Get(g.fieldNamer.GetTagName())*/
+	for i, s := range strings.Split(g.fieldNamer.GetJSONFieldName(f.Type, f), ",") {
 		switch {
 		case i == 0 && s == "-":
 			ret.omit = true
@@ -329,7 +329,7 @@ func (g *Generator) genStructEncoder(t reflect.Type) error {
 	fmt.Fprintln(g.out, "  first := true")
 	fmt.Fprintln(g.out, "  _ = first")
 
-	fs, err := getStructFields(t)
+	fs, err := g.getStructFields(t)
 	if err != nil {
 		return fmt.Errorf("cannot generate encoder for %v: %v", t, err)
 	}
