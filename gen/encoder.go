@@ -134,8 +134,6 @@ func (g *Generator) genTypeEncoderNoCheck(t reflect.Type, in string, tags fieldT
 		if t.Elem().Kind() == reflect.Uint8 {
 			fmt.Fprintln(g.out, ws+"out.Base64Bytes("+in+")")
 		} else {
-			// fmt.Fprintln(g.out, ws+"fmt.Printf(\"out.Flags&jwriter.NilSliceAsEmpty: %v\", out.Flags&jwriter.NilSliceAsEmpty)")
-
 			fmt.Fprintln(g.out, ws+"if "+in+" == nil && (out.Flags & jwriter.NilSliceAsEmpty) == 0 {")
 			fmt.Fprintln(g.out, ws+`  out.RawString("null")`)
 			fmt.Fprintln(g.out, ws+"} else {")
