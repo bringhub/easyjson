@@ -32,8 +32,7 @@ func Marshal(v Marshaler) ([]byte, error) {
 	return MarshalCustom(v, "json")
 }
 func MarshalCustom(v Marshaler, usingTagName string) ([]byte, error) {
-	w := jwriter.Writer{}
-	w.Flags = jwriter.NilSliceAsEmpty
+	w := jwriter.Writer{Flags: jwriter.NilSliceAsEmpty}
 	v.MarshalEasyJSON(&w, usingTagName)
 	return w.BuildBytes()
 }
@@ -43,7 +42,7 @@ func MarshalToWriter(v Marshaler, w io.Writer) (written int, err error) {
 	return MarshalToWriterCustom(v, w, "json")
 }
 func MarshalToWriterCustom(v Marshaler, w io.Writer, usingTagName string) (written int, err error) {
-	jw := jwriter.Writer{}
+	jw := jwriter.Writer{Flags: jwriter.NilSliceAsEmpty}
 	v.MarshalEasyJSON(&jw, usingTagName)
 	return jw.DumpTo(w)
 }
@@ -56,7 +55,7 @@ func MarshalToHTTPResponseWriter(v Marshaler, w http.ResponseWriter) (started bo
 	return MarshalToHTTPResponseWriterCustom(v, w, "json")
 }
 func MarshalToHTTPResponseWriterCustom(v Marshaler, w http.ResponseWriter, usingTagName string) (started bool, written int, err error) {
-	jw := jwriter.Writer{}
+	jw := jwriter.Writer{Flags: jwriter.NilSliceAsEmpty}
 	v.MarshalEasyJSON(&jw, usingTagName)
 	if jw.Error != nil {
 		return false, 0, jw.Error
