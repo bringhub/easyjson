@@ -59,7 +59,7 @@ func generate(fname string) (err error) {
 	if *buildTags != "" {
 		trimmedBuildTags = strings.TrimSpace(*buildTags)
 	}
-
+	// fmt.Fprintf(os.Stderr, "struct names: %v", p.StructNames)
 	g := bootstrap.Generator{
 		BuildTags:       trimmedBuildTags,
 		PkgPath:         p.PkgPath,

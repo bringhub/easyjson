@@ -4,6 +4,7 @@ import (
 	"encoding"
 	"encoding/json"
 	"fmt"
+	"os"
 	"reflect"
 	"strings"
 	"unicode"
@@ -187,9 +188,18 @@ func (g *Generator) genTypeDecoderNoCheck(t reflect.Type, out string, tags field
 
 	case reflect.Struct:
 		dec := g.getDecoderName(t)
-		g.addType(t)
 
-		fmt.Fprintln(g.out, ws+dec+"(in, &"+out+")")
+		// fmt.Fprintf(os.Stderr, "test: %v\n", t.Name())
+		// this appears to only get here when linking to other packages?
+
+		c := []rune(t.Name())[0]
+		if unicode.IsUpper(c) {
+			g.addType(t)
+
+			fmt.Fprintln(g.out, ws+dec+"(in, &"+out+")")
+		} else {
+			fmt.Fprintf(os.Stderr, "%v is lowercase\n", t.Name())
+		}
 
 	case reflect.Ptr:
 		fmt.Fprintln(g.out, ws+"if in.IsNull() {")
@@ -331,7 +341,6 @@ func (g *Generator) getStructFields(t reflect.Type) ([]reflect.StructField, erro
 	var efields []reflect.StructField
 	for i := 0; i < t.NumField(); i++ {
 		f := t.Field(i)
-
 		fieldTags := g.parseFieldTags(f)
 
 		if !fieldTags.inline {
@@ -353,7 +362,6 @@ func (g *Generator) getStructFields(t reflect.Type) ([]reflect.StructField, erro
 	var fields []reflect.StructField
 	for i := 0; i < t.NumField(); i++ {
 		f := t.Field(i)
-
 		fieldTags := g.parseFieldTags(f)
 
 		if fieldTags.inline {

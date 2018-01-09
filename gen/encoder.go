@@ -134,6 +134,8 @@ func (g *Generator) genTypeEncoderNoCheck(t reflect.Type, in string, tags fieldT
 		if t.Elem().Kind() == reflect.Uint8 {
 			fmt.Fprintln(g.out, ws+"out.Base64Bytes("+in+")")
 		} else {
+			fmt.Fprintln(g.out, ws+"fmt.Printf(\"out.Flags&jwriter.NilSliceAsEmpty: %v\", out.Flags&jwriter.NilSliceAsEmpty)")
+
 			fmt.Fprintln(g.out, ws+"if "+in+" == nil && (out.Flags & jwriter.NilSliceAsEmpty) == 0 {")
 			fmt.Fprintln(g.out, ws+`  out.RawString("null")`)
 			fmt.Fprintln(g.out, ws+"} else {")
@@ -360,6 +362,9 @@ func (g *Generator) genStructMarshaler(t reflect.Type) error {
 		fmt.Fprintln(g.out, "// MarshalJSON supports json.Marshaler interface")
 		fmt.Fprintln(g.out, "func (v "+typ+") MarshalJSON() ([]byte, error) {")
 		fmt.Fprintln(g.out, "  w := jwriter.Writer{}")
+
+		fmt.Fprintln(g.out, "  w.Flags = jwriter.NilSliceAsEmpty")
+
 		fmt.Fprintln(g.out, "  "+fname+"(&w, v)")
 		fmt.Fprintln(g.out, "  return w.Buffer.BuildBytes(), w.Error")
 		fmt.Fprintln(g.out, "}")

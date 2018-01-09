@@ -33,6 +33,7 @@ func Marshal(v Marshaler) ([]byte, error) {
 }
 func MarshalCustom(v Marshaler, usingTagName string) ([]byte, error) {
 	w := jwriter.Writer{}
+	w.Flags = jwriter.NilSliceAsEmpty
 	v.MarshalEasyJSON(&w, usingTagName)
 	return w.BuildBytes()
 }
