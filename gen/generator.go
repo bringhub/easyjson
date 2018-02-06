@@ -421,6 +421,9 @@ func (dfn DefaultFieldNamer) GetTagValue(f reflect.StructField) string {
 	// try tagname
 	t := strings.TrimSpace(f.Tag.Get(dfn.GetTagName()))
 	if len(t) < 1 { //otherwise try backup
+		if dfn.backupTag == "-" { //this signals to just ignore the field if the main tag does not exist
+			return dfn.backupTag
+		}
 		t = strings.TrimSpace(f.Tag.Get(dfn.backupTag))
 	}
 	return t
@@ -503,6 +506,9 @@ func (lccfn LowerCamelCaseFieldNamer) GetTagValue(f reflect.StructField) string 
 	// try tagname
 	t := strings.TrimSpace(f.Tag.Get(lccfn.GetTagName()))
 	if len(t) < 1 { //otherwise try backup
+		if lccfn.backupTag == "-" { //this signals to just ignore the field if the main tag does not exist
+			return lccfn.backupTag
+		}
 		t = strings.TrimSpace(f.Tag.Get(lccfn.backupTag))
 	}
 	return t
@@ -578,6 +584,9 @@ func (scfn SnakeCaseFieldNamer) GetTagValue(f reflect.StructField) string {
 	// try tagname
 	t := strings.TrimSpace(f.Tag.Get(scfn.GetTagName()))
 	if len(t) < 1 { //otherwise try backup
+		if scfn.backupTag == "-" { //this signals to just ignore the field if the main tag does not exist
+			return scfn.backupTag
+		}
 		t = strings.TrimSpace(f.Tag.Get(scfn.backupTag))
 	}
 	return t
