@@ -314,6 +314,11 @@ func (g *Generator) genRequiredFieldCheck(t reflect.Type, f reflect.StructField)
 	fmt.Fprintf(g.out, "}\n")
 }
 
+type extendedStructField struct {
+	field  reflect.StructField
+	parent *reflect.StructField
+}
+
 func mergeStructFields(fields1, fields2 []reflect.StructField) (fields []reflect.StructField) {
 	used := map[string]bool{}
 	for _, f := range fields2 {
@@ -353,6 +358,12 @@ func (g *Generator) getStructFields(t reflect.Type) ([]reflect.StructField, erro
 		}
 
 		fs, err := g.getStructFields(t1)
+		if !f.Anonymous {
+			for i, sf := range fs {
+				fs[i].Name = fmt.Sprintf("%v.%v", f.Name, sf.Name)
+				fmt.Fprintf(os.Stderr, "field name %v\n", fs[i].Name)
+			}
+		}
 		if err != nil {
 			return nil, fmt.Errorf("error processing embedded field: %v", err)
 		}
