@@ -361,7 +361,7 @@ func (g *Generator) getStructFields(t reflect.Type) ([]reflect.StructField, erro
 		if !f.Anonymous {
 			for i, sf := range fs {
 				fs[i].Name = fmt.Sprintf("%v.%v", f.Name, sf.Name)
-				fmt.Fprintf(os.Stderr, "field name %v\n", fs[i].Name)
+				// fmt.Fprintf(os.Stderr, "field name %v\n", fs[i].Name)
 			}
 		}
 		if err != nil {
