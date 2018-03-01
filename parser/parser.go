@@ -9,6 +9,7 @@ import (
 )
 
 const structComment = "easyjson:json"
+const structIgnoreComment = "easyjson:ignore"
 
 type Parser struct {
 	PkgPath     string
@@ -24,16 +25,23 @@ type visitor struct {
 	explicit bool
 }
 
-func (p *Parser) needType(comments string) bool {
+func hasPrefix(comments string, what string) bool {
 	for _, v := range strings.Split(comments, "\n") {
-		if strings.HasPrefix(v, structComment) {
+		if strings.HasPrefix(v, what) {
 			return true
 		}
 	}
 	return false
 }
+func (p *Parser) needType(comments string) bool {
+	return hasPrefix(comments, structComment)
+}
+func (p *Parser) ignoreType(comments string) bool {
+	return hasPrefix(comments, structIgnoreComment)
+}
 
 func (v *visitor) Visit(n ast.Node) (w ast.Visitor) {
+	// fmt.Fprintf(os.Stderr, "\nin visit: %v\n", n)
 	switch n := n.(type) {
 	case *ast.Package:
 		return v
@@ -42,9 +50,12 @@ func (v *visitor) Visit(n ast.Node) (w ast.Visitor) {
 		return v
 
 	case *ast.GenDecl:
-		v.explicit = v.needType(n.Doc.Text())
-
-		if !v.explicit && !v.AllStructs {
+		text := n.Doc.Text()
+		v.explicit = v.needType(text)
+		ignore := v.ignoreType(text)
+		// fmt.Fprintf(os.Stderr, "\ngen decl: %v\ntext: %v\nignore: %v\n", v.Parser, text, ignore)
+		// second case is to allow ignoring certain structs when using -pkg
+		if (!v.explicit && !v.AllStructs) || (v.AllStructs && ignore) {
 			return nil
 		}
 		return v
